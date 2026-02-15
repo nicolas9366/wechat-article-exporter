@@ -1,0 +1,33 @@
+name: Deploy WeChat Exporter
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  workflow_dispatch: # Permite activar el botón manualmente / 允许手动点击按钮触发
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          script: |
+            # 1. Descargar la última versión de la imagen / 拉取最新镜像
+            docker pull ghcr.io/wechat-article/wechat-article-exporter:latest
+            
+            # 2. Detener el contenedor anterior si existe / 如果存在旧容器则停止
+            docker stop wechat-exporter || true
+            docker rm wechat-exporter || true
+            
+            # 3. Iniciar el nuevo contenedor / 启动新容器
+            # Mapeamos el puerto 3000 y guardamos los datos en ~/wechat-data
+            docker run -d \
+              --name wechat-exporter \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              -v ~/wechat-data:/app/data \
+              ghcr.io/wechat-article/wechat-article-exporter:latest
